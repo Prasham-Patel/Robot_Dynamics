@@ -1,0 +1,95 @@
+function omega_b = angvelocityspace2body(omega_s,R)
+    Ws = [0, -omega_s(3), omega_s(2); 
+          omega_s(3), 0, -omega_s(1);
+          -omega_s(2), omega_s(1), 0];
+    Wb = inv(R)*Ws*R
+    omega_b = [-Wb(2, 3); Wb(1, 3); -Wb(1, 2)]
+end
+
+function V_b = twistspace2body(V_s,T)
+    
+    R = [T(1:3, 1:3)]';
+    omega_s = -R*[T(1, 4); T(2, 4); T(3, 4)]
+    P = [0, -omega_s(3), omega_s(2); 
+          omega_s(3), 0, -omega_s(1);
+          -omega_s(2), omega_s(1), 0];
+    V_b = [R, zeros(3, 3); P*R, R]*V_s;
+end
+
+function T = fkine(S,M,q,frame)
+    % your code here
+    
+    % If needed, you can convert twists to homogeneous transformation matrices with:
+    % twist2ht(S(i),q(i));
+    T = eye(4)
+    if frame == "body"
+    T = M;
+    end
+    [rows, cols] = size(S);
+    cols
+    for i = 1:cols
+        T = T*ht(S(:, i), q(i));
+    end
+    if frame == "space"
+    T = T*M
+    end
+    % If needed, you can convert twists to homogeneous transformation matrices with:
+    % twist2ht(S(i),q(i));
+end
+function T = ht(S, theta)
+    omega = [S(1), S(2), S(3)];
+    v = [S(4), S(5), S(6)].';
+    w = [0, -omega(3), omega(2); omega(3), 0, -omega(1); -omega(2), omega(1), 0];
+    R = eye(3) + (w^2)*(1 - cos(theta)) + w*sin(theta);
+    P = (eye(3)*theta + (w^2)*(theta - sin(theta)) + w*(1 - cos(theta)))*v;
+    T = [R, P; 0, 0, 0, 1];
+end
+
+function J_b = jacobe(S,M,q)    
+    % your code here
+    
+    % your code here
+    [rows, cols] = size(S);
+    T = ht(S(:,1), q(1));
+        
+    J = adjoint(S(:, 1), T)
+    for i = 2:cols
+        T = T*ht(S(:,i), q(i));
+        J = horzcat(J, adjoint(S(:, i), T))
+    end
+    % If necessary, you calculate the homogeneous transformation associated with a twist V and displacement omega with:
+    % T = twist2ht(V,omega);
+    
+    % You can also calculate the adjoint transformation of a twist V w.r.t. a homogeneous transformation matrix T with:
+    % adjoint(V,T)
+    T = T*M
+    
+    R = [T(1:3, 1:3)]';
+    omega_s = -R*[T(1, 4); T(2, 4); T(3, 4)]
+    P = [0, -omega_s(3), omega_s(2); 
+          omega_s(3), 0, -omega_s(1);
+          -omega_s(2), omega_s(1), 0];
+    J_b = [R, zeros(3, 3); P*R, R]*J
+
+end
+
+function J_a = jacoba(S,M,q)    
+    % your code here
+    [rows, cols] = size(S);
+    T = ht(S(:,1), q(1));
+        
+    J = adjoint(S(:, 1), T);
+    for i = 2:cols
+        T = T*ht(S(:,i), q(i));
+        J = horzcat(J, adjoint(S(:, i), T));
+    end
+    T = T*M;
+    
+    R = [T(1:3, 1:3)]';
+    omega_s = [T(1, 4); T(2, 4); T(3, 4)];
+    P = [0, -omega_s(3), omega_s(2); 
+          omega_s(3), 0, -omega_s(1);
+          -omega_s(2), omega_s(1), 0];
+    J_a = -P*J(1:3, :) + J(4:6, :)
+    
+end
